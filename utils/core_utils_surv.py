@@ -253,10 +253,10 @@ def train_surv(datasets, cur, args):
         model.load_state_dict(torch.load(os.path.join(args.results_dir, "s_{}_checkpoint.pt".format(cur))))
     else:
         torch.save(model.state_dict(), os.path.join(args.results_dir, "s_{}_checkpoint.pt".format(cur)))
-
+    # import pdb; pdb.set_trace()
     _, val_c_index = summary_surv(model, val_loader, args.n_classes)
     print('Val c-index: {:.4f}'.format(val_c_index))
-
+    # import pdb; pdb.set_trace()
     results_dict, test_c_index = summary_surv(model, test_loader, args.n_classes)
     print('Test c-index: {:.4f}'.format(test_c_index))
 
@@ -426,7 +426,7 @@ def summary_surv(model, loader, n_classes):
 
     slide_ids = loader.dataset.slide_data['slide_id']
     patient_results = {}
-
+    # i=0
     for batch_idx, (data, label, event_time, c) in enumerate(loader):
         data, label= data.to(device), label.to(device)
         
@@ -434,13 +434,20 @@ def summary_surv(model, loader, n_classes):
         with torch.no_grad():
             hazards, survival, Y_hat, _, _ = model(data)
 
-        risk = np.asscalar(-torch.sum(survival, dim=1).cpu().numpy())
-        event_time = np.asscalar(event_time)
-        c = np.asscalar(c)
+        # risk = np.asscalar(-torch.sum(survival, dim=1).cpu().numpy())
+        # event_time = np.asscalar(event_time)
+        # c = np.asscalar(c)
+        risk = np.ndarray.item(-torch.sum(survival, dim=1).cpu().numpy())
+        event_time = np.ndarray.item(event_time)
+        c = np.ndarray.item(c.numpy())
         all_risk_scores[batch_idx] = risk
         all_censorships[batch_idx] = c
         all_event_times[batch_idx] = event_time
         patient_results.update({slide_id: {'slide_id': np.array(slide_id), 'risk': risk, 'disc_label': label.item(), 'survival': event_time, 'censorship': c}})
-
+        # i=i+1
+        # import pdb; pdb.set_trace()
+    # print("iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii::::::::::"+str(i))
+    # import pdb; pdb.set_trace()
+    
     c_index = concordance_index_censored((1-all_censorships).astype(bool), all_event_times, all_risk_scores, tied_tol=1e-08)[0]
     return patient_results, c_index

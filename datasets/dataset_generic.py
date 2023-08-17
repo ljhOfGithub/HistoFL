@@ -63,7 +63,7 @@ class Generic_WSI_Classification_Dataset(Dataset):
 		self.data_dir = None
 		self.inst = inst
 		if not label_col:
-			label_col = 'label'
+			label_col = 'survival_months'
 		
 		self.label_col = label_col
 		self.site_col = site_col
@@ -74,6 +74,7 @@ class Generic_WSI_Classification_Dataset(Dataset):
 
 		self.label_dict = label_dict
 		self.num_classes = len(set(self.label_dict.values()))
+		slide_data['institute'] = 'site_0'
 		self.institutes = slide_data[site_col].unique()
 		
 		slide_data = self.df_prep(slide_data, self.label_dict, ignore, self.label_col, multi_site, self.site_col, filter_dict)
@@ -113,7 +114,7 @@ class Generic_WSI_Classification_Dataset(Dataset):
 			if patient_voting == 'max':
 				label = label.max() # get patient label (MIL convention)
 			elif patient_voting == 'maj':
-				label = stats.mode(label)[0]
+				label = stats.mode(label,keepdims=True)[0]
 			else:
 				raise NotImplementedError
 			patient_labels.append(label)
@@ -143,11 +144,11 @@ class Generic_WSI_Classification_Dataset(Dataset):
 		data = data[~mask]
 		data.reset_index(drop=True, inplace=True)
 		for i in data.index:
-			key = data.loc[i, 'label']
+			# key = data.loc[i, 'label']
 			if multi_site:
 				site = data.loc[i, site_col]
 				key = (key, site)
-			data.at[i, 'label'] = label_dict[key]
+			# data.at[i, 'label'] = label_dict[key]
 
 		if len(filter_dict) > 0:
 			filter_mask = np.full(len(data), True, bool)

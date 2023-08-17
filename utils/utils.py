@@ -65,8 +65,9 @@ def get_split_loader(split_dataset, training = False, testing = False, weighted 
 		collate = collate_MIL_survival
 	else:
 		raise NotImplementedError
-	kwargs = {'num_workers': 4} if device.type == "cuda" else {}
-	if not testing:
+	# kwargs = {'num_workers': 4} if device.type == "cuda" else {}
+	kwargs = {'num_workers': 0} if device.type == "cuda" else {} #方便调试
+	if not testing:#不测试，只训练
 		if training:
 			if weighted:
 				weights = make_weights_for_balanced_classes_split(split_dataset)
@@ -76,8 +77,9 @@ def get_split_loader(split_dataset, training = False, testing = False, weighted 
 		else:
 			loader = DataLoader(split_dataset, batch_size=1, sampler = SequentialSampler(split_dataset), collate_fn = collate, **kwargs)
 	
-	else:
-		ids = np.random.choice(np.arange(len(split_dataset)), int(len(split_dataset)*0.1), replace = False)
+	else:#测试过程
+		# ids = np.random.choice(np.arange(len(split_dataset)), int(len(split_dataset)*0.1), replace = False)#只采用其中的0.1来测试
+		ids = np.random.choice(np.arange(0, len(split_dataset)), int(len(split_dataset)), replace = False)#只采用其中的0.1来测试
 		loader = DataLoader(split_dataset, batch_size=1, sampler = SubsetSequentialSampler(ids), collate_fn = collate, **kwargs )
 
 	return loader
@@ -142,7 +144,7 @@ def generate_split(cls_ids, val_num, test_num, samples, n_splits = 5,
 				sample_num  = math.ceil(len(remaining_ids) * label_frac)
 				slice_ids = np.arange(sample_num)
 				sampled_train_ids.extend(remaining_ids[slice_ids])
-
+		# import pdb; pdb.set_trace()
 		yield sampled_train_ids, all_val_ids, all_test_ids
 
 
@@ -182,6 +184,9 @@ def initialize_weights(module):
 
 def nll_loss(hazards, Y, c, S=None, alpha=0.15, eps=1e-7):
 	batch_size = len(Y)
+	# import pdb; pdb.set_trace()
+	if batch_size != 1:
+		raise ValueError("test")
 	Y = Y.view(batch_size, 1) # ground truth bin, 1,2,...,k
 	c = c.view(batch_size, 1).float() #censorship status, 0 or 1
 	if S is None:

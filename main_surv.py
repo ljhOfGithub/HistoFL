@@ -1,5 +1,5 @@
 from __future__ import print_function
-
+CUDA_VISIBLE_DEVICES=0
 import argparse
 import pdb
 import os
@@ -84,10 +84,14 @@ def main(args):
 
 # Training settings
 parser = argparse.ArgumentParser(description='Configurations for WSI Training')
-parser.add_argument('--data_root_dir', type=str, default='/media/fedshyvana/ssd1', 
+# parser.add_argument('--data_root_dir', type=str, default='/media/fedshyvana/ssd1', 
+					# help='data directory')
+parser.add_argument('--data_root_dir', type=str, default='/home/jupyter-ljh/data/mntdata/data0/LI_jihao/BRCA_fea', 
 					help='data directory')
-parser.add_argument('--max_epochs', type=int, default=50,
-					help='maximum number of epochs to train')
+# parser.add_argument('--max_epochs', type=int, default=50,
+# 					help='maximum number of epochs to train')
+parser.add_argument('--max_epochs', type=int, default=1,
+					help='maximum number of epochs to train') #方便调试
 parser.add_argument('--lr', type=float, default=2e-4,
 					help='learning rate (default: 0.0002)')
 parser.add_argument('--reg', type=float, default=1e-5,
@@ -97,23 +101,38 @@ parser.add_argument('--seed', type=int, default=1,
 parser.add_argument('--noise_level', type=float, default=0,
                     help='noise level added on the shared weights in federated learning (default: 0)')
 parser.add_argument('--k', type=int, default=5, help='number of folds (default: 10)')
+# parser.add_argument('--k', type=int, default=1, help='number of folds (default: 10)') #方便调试
 parser.add_argument('--k_start', type=int, default=-1, help='start fold (default: -1, last fold)')
 parser.add_argument('--k_end', type=int, default=-1, help='end fold (default: -1, first fold)')
 parser.add_argument('--results_dir', default='./results', help='results directory (default: ./results)')
-parser.add_argument('--split_dir', type=str, default=None, 
+# parser.add_argument('--split_dir', type=str, default=None, 
+# 					help='manually specify the set of splits to use, ' 
+# 					+'instead of infering from the task and label_frac argument (default: None)')
+# parser.add_argument('--split_dir', type=str, default='tcga_brca',
+# 					help='manually specify the set of splits to use, ' 
+# 					+'instead of infering from the task and label_frac argument (default: None)')#方便调试
+parser.add_argument('--split_dir', type=str, default='survival_100',
 					help='manually specify the set of splits to use, ' 
-					+'instead of infering from the task and label_frac argument (default: None)')
+					+'instead of infering from the task and label_frac argument (default: None)')#方便调试
+# parser.add_argument('--split_dir', type=str, default='survival_bug_100',
+# 					help='manually specify the set of splits to use, ' 
+# 					+'instead of infering from the task and label_frac argument (default: None)')#方便调试
 parser.add_argument('--opt', type=str, choices = ['adam', 'sgd'], default='adam')
 parser.add_argument('--bag_loss', type=str, choices=['ce_surv', 'nll_surv'], default='nll_surv',
 					 help='slide-level classification loss function (default: ce)')
 parser.add_argument('--alpha_surv', type=float, default=0.15, help='How much to upweight uncensored patients')
 parser.add_argument('--exp_code', type=str, help='experiment code for saving results')
-parser.add_argument('--task', type=str)
-parser.add_argument('--inst_name', type=str, default=None)
+# parser.add_argument('--task', type=str)
+parser.add_argument('--task', type=str, default='survival') #方便调试
+# parser.add_argument('--inst_name', type=str, default=None)
+parser.add_argument('--inst_name', type=str, default='institute_0') #方便调试，不分布
 parser.add_argument('--weighted_fl_avg', action='store_true', default=False, help='enable weighted sampling')
-parser.add_argument('--no_fl', action='store_true', default=False, help='train on centralized data')
+# parser.add_argument('--no_fl', action='store_true', default=False, help='train on centralized data')
+parser.add_argument('--no_fl', action='store_true', default=True, help='train on centralized data') #方便调试
 parser.add_argument('--n_bins', type=int, default=8, help='number of bins to use for event-time discretization')
 parser.add_argument('--E', type=int, default=1, help='communication_freq')
+parser.add_argument('--testing', default=True, help='testing') #方便调试
+parser.add_argument('--weighted_sample', action='store_true', default=True, help='Enable weighted sampling') #方便调试
 args = parser.parse_args()
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -168,8 +187,11 @@ args.n_classes = args.n_bins
 
 print('\nLoad Dataset')
 if args.task == 'survival':
-  dataset = Generic_MIL_Survival_Dataset(csv_path = 'dataset_csv/survival_fl_dummy_dataset.csv',
-										   data_dir= os.path.join(args.data_root_dir, 'survival_features_dir'),
+  # dataset = Generic_MIL_Survival_Dataset(csv_path = 'dataset_csv/survival_fl_dummy_dataset.csv',
+  # data_dir= os.path.join(args.data_root_dir, 'survival_features_dir'),
+  dataset = Generic_MIL_Survival_Dataset(csv_path = 'dataset_csv/tcga_brca_all_clean.csv',
+										   # data_dir= os.path.join(args.data_root_dir, 'survival_features_dir'),
+										   data_dir=args.data_root_dir,                                         
 										   shuffle = False, 
 										   seed = args.seed, 
 										   print_info=True,

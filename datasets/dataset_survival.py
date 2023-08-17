@@ -11,8 +11,10 @@ from scipy import stats
 
 from torch.utils.data import Dataset
 import h5py
-
+import sys
+sys.path.append("..") 
 from utils.utils import generate_split, nth
+# from ../utils.utils import generate_split, nth
 
 
 
@@ -67,6 +69,8 @@ class Generic_WSI_Survival_Dataset(Dataset):
 
 
 		slide_data = pd.read_csv(csv_path, index_col=0)
+		# import pdb; pdb.set_trace()
+		slide_data['institute']='site_0'
 		self.institutes = slide_data[site_col].unique()
 
 		if 'case_id' not in slide_data:
@@ -74,7 +78,8 @@ class Generic_WSI_Survival_Dataset(Dataset):
 			slide_data = slide_data.reset_index(drop=True)
 
 		if not label_col:
-			label_col = 'survival'
+			# label_col = 'survival'
+			label_col = 'survival_months'
 		else:
 			assert label_col in slide_data.columns
 		self.label_col = label_col
@@ -85,10 +90,11 @@ class Generic_WSI_Survival_Dataset(Dataset):
 
 
 		# all unique patients
-		patients_df = slide_data.drop_duplicates(['case_id']).copy()
+		patients_df = slide_data.drop_duplicates(['case_id']).copy()#去重病人编号
 		uncensored_df = patients_df[patients_df['censorship'] < 1]
+		# uncensored_df = patients_df[patients_df['censorship'] > 0]
 
-		# cut/discretize uncensored patients into quartiles and retrieve bins
+		# cut/discretize uncensored patients into quartiles and retrieve bins 只取uncensored的数据
 		disc_labels, q_bins = pd.qcut(uncensored_df[label_col], q=n_bins, retbins=True, labels=False)
 		q_bins[-1] = slide_data[label_col].max() + eps
 		q_bins[0] = slide_data[label_col].min() - eps
@@ -110,7 +116,7 @@ class Generic_WSI_Survival_Dataset(Dataset):
 			patient_dict.update({patient:slide_ids})
 
 		self.patient_dict = patient_dict
-		
+		# import pdb; pdb.set_trace()
 		# doing prediction at patient-level
 		slide_data = patients_df
 		slide_data.reset_index(drop=True, inplace=True)
@@ -201,7 +207,8 @@ class Generic_WSI_Survival_Dataset(Dataset):
 			if self.test_ids is not None:
 				print('Number of held-out test samples: {}'.format(len(np.intersect1d(self.test_ids, self.slide_cls_ids[i]))))
 
-	def create_splits(self, k = 3, val_num = (25, 25), test_num = (40, 40), label_frac = 1.0, custom_test_ids = None):
+	# def create_splits(self, k = 3, val_num = (25, 25), test_num = (40, 40), label_frac = 1.0, custom_test_ids = None):
+	def create_splits(self, k = 5, val_num = (25, 25), test_num = (40, 40), label_frac = 1.0, custom_test_ids = None):
 		settings = {
 					'n_splits' : k, 
 					'val_num' : val_num, 
@@ -338,7 +345,9 @@ class Generic_WSI_Survival_Dataset(Dataset):
 		for u in range(len(unique)):
 			print('number of samples in cls {}: {}'.format(unique[u], counts[u]))
 			if return_descriptor:
+				# import pdb; pdb.set_trace()
 				df.loc[index[u], 'train'] = counts[u]
+				# df.loc[tuple([int(element) for element in index[u]]), 'train'] = counts[u]
 		
 		count = len(self.val_ids)
 		print('\nnumber of val samples: {}'.format(count))
@@ -416,7 +425,7 @@ class Generic_MIL_Survival_Dataset(Generic_WSI_Survival_Dataset):
 			if self.data_dir:
 				all_features = []
 				for slide_id in slide_ids:
-					full_path = os.path.join(data_dir,'pt_files', '{}.pt'.format(slide_id))
+					full_path = os.path.join(data_dir,'pt_files', '{}.pt'.format(slide_id[:-4]))
 					features = torch.load(full_path)
 					all_features.append(features)
 				all_features = torch.cat(all_features, dim=0)
